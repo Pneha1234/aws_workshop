@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation Template for Lambda, EventBridge, Lambda Layer, SQS, and IAM Role
+
+Resources:
+  LambdaLayer:
+    Type: 'AWS::Lambda::LayerVersion'
+    Properties:
+      LayerName: StockRecommendationLayer
+      Content:
+        S3Bucket: your-layer-bucket
+        S3Key: layer-code.zip
+      CompatibleRuntimes:
+        - python3.11
+
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: StockRecommendationSystem
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+
+          def lambda_handler(event, context):
+              # TODO implement
+              # Initialize the AWS SDK
+              eventbridge = boto3.client('events')
+              print(eventbridge)
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Hello from Lambda!')
+              }
+      Runtime: python3.11
+      Layers:
+        - !Ref LambdaLayer
+
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: LambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt LambdaFunction.Arn
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: arn:aws:sqs:REGION:ACCOUNT_ID:QUEUE_NAME
+
+  EventBridgeRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: LambdaEventRule
+      Description: EventBridge Rule for Lambda
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: LambdaTarget
+          InputTransformer:
+            InputPathsMap:
+              detail-type: "$.detail-type"
+            InputTemplate: '{"eventDetail": <event>, "eventSource": <source> }'
+
+  MyQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: TestQueue
+
+  LambdaEventSourceMapping:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !GetAtt TestQueue.Arn
+      FunctionName: !Ref LambdaFunction
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt LambdaFunction.Arn
+
+  LambdaLayerArn:
+    Description: ARN of the Lambda layer
+    Value: !GetAtt LambdaLayer.Arn
+
+  EventBridgeRuleArn:
+    Description: ARN of the EventBridge rule
+    Value: !GetAtt EventBridgeRule.Arn
+
+  QueueUrl:
+    Description: URL of the SQS Queue
+    Value: !GetAtt MyQueue.QueueUrl

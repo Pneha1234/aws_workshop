@@ -2,22 +2,12 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: CloudFormation Template for Lambda, EventBridge, Lambda Layer, SQS, and IAM Role
 
 Resources:
-  LambdaLayer:
-    Type: 'AWS::Lambda::LayerVersion'
-    Properties:
-      LayerName: StockRecommendationLayer
-      Content:
-        S3Bucket: your-layer-bucket
-        S3Key: layer-code.zip
-      CompatibleRuntimes:
-        - python3.11
-
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: StockRecommendationSystem
-      Handler: index.lambda_handler
-      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: main.lambda_handler
+      Role: !GetAtt StockRecommendationRole.Arn
       Code:
         ZipFile: |
           import json
@@ -33,43 +23,77 @@ Resources:
                   'body': json.dumps('Hello from Lambda!')
               }
       Runtime: python3.11
-      Layers:
-        - !Ref LambdaLayer
 
-  LambdaExecutionRole:
-    Type: 'AWS::IAM::Role'
+  StockRecommendationRole:
+    Type: AWS::IAM::Role
     Properties:
-      RoleName: LambdaExecutionRole
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
         Statement:
-          - Effect: Allow
+          - Action: [ 'sts:AssumeRole' ]
+            Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
+              Service: [ 'firehose.amazonaws.com', 'lambda.amazonaws.com', ]
+        Version: '2012-10-17'
+      Path: /
       Policies:
-        - PolicyName: LambdaPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
+        - PolicyDocument:
             Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
+              - Action: execute-api:Invoke
+                Effect: Allow
+                Resource: "arn:aws:execute-api:*:*:*"
+              - Action: [ "ssm:GetParameter" ]
+                Effect: Allow
+                Resource: "*"
+              - Action: lambda:InvokeFunction
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutRetentionPolicy'
+                  - 'logs:DescribeLogGroups'
+                  - 'logs:DescribeLogStreams'
+                  - 'logs:PutLogEvents'
+                  - 'logs:GetLogEvents'
                 Resource: 'arn:aws:logs:*:*:*'
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource: !GetAtt LambdaFunction.Arn
-              - Effect: Allow
-                Action:
-                  - events:PutEvents
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - sqs:SendMessage
-                Resource: arn:aws:sqs:REGION:ACCOUNT_ID:QUEUE_NAME
+                Effect: Allow
+              - Action:
+                  - firehose:DescribeDeliveryStream
+                  - firehose:ListDeliveryStreams
+                  - firehose:PutRecord
+                  - firehose:PutRecordBatch
+                  - firehose:GetRecords
+                  - firehose:GetShardIterator
+                  - firehose:DescribeStream
+                  - firehose:ListShards
+                  - firehose:ListStreams
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - kinesis:PutRecord
+                  - kinesis:PutRecordBatch
+                  - kinesis:GetRecords
+                  - kinesis:GetShardIterator
+                  - kinesis:DescribeStream
+                  - kinesis:ListShards
+                  - kinesis:ListStreams
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - s3:AbortMultipartUpload
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                Effect: Allow
+                Resource: "*"
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource: "*"
+            Version: '2012-10-17'
+          PolicyName: StockPolicy
 
   EventBridgeRule:
     Type: 'AWS::Events::Rule'
@@ -84,33 +108,7 @@ Resources:
           InputTransformer:
             InputPathsMap:
               detail-type: "$.detail-type"
-            InputTemplate: '{"eventDetail": <event>, "eventSource": <source> }'
+            InputTemplate: '{"hello": "world", "hello1": "world2" }'
 
-  MyQueue:
-    Type: 'AWS::SQS::Queue'
-    Properties:
-      QueueName: TestQueue
 
-  LambdaEventSourceMapping:
-    Type: 'AWS::Lambda::EventSourceMapping'
-    Properties:
-      BatchSize: 1
-      EventSourceArn: !GetAtt TestQueue.Arn
-      FunctionName: !Ref LambdaFunction
 
-Outputs:
-  LambdaFunctionArn:
-    Description: ARN of the Lambda function
-    Value: !GetAtt LambdaFunction.Arn
-
-  LambdaLayerArn:
-    Description: ARN of the Lambda layer
-    Value: !GetAtt LambdaLayer.Arn
-
-  EventBridgeRuleArn:
-    Description: ARN of the EventBridge rule
-    Value: !GetAtt EventBridgeRule.Arn
-
-  QueueUrl:
-    Description: URL of the SQS Queue
-    Value: !GetAtt MyQueue.QueueUrl

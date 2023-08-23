@@ -1,31 +1,28 @@
 import json
-import boto3
-
-# Initialize the AWS SDK
-eventbridge = boto3.client('events')
 
 
 def lambda_handler(event, context):
-    # Parse the incoming event
-    try:
-        data = json.loads(event['body'])
-    except Exception as e:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "Invalid input data"})
-        }
+    print(event)
+    portfolio_stock = {"stock_name": "abc",
+                       "stock_price": "300"}
 
-    # Process data from API Gateway
-    api_data = data.get('api_data')
-    if api_data:
-        print("Received data from API Gateway:", api_data)
 
-    # Process data from EventBridge
-    eventbridge_data = data.get('eventbridge_data')
-    if eventbridge_data:
-        print("Received data from EventBridge:", eventbridge_data)
+    if (event.get('route')):
+        print('this is scheduled event')
+        
+        recommended_stock = (event.get('body'))
+        if recommended_stock['stock_name'] == portfolio_stock['stock_name'] and recommended_stock['stock_price'] > \
+                portfolio_stock['stock_name']:
+            print('buy stock')
+        else:
+            print('sell stock')
 
+
+    else:
+        print('this is from sqs events')
+
+    # TODO implement
     return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "Data received successfully"})
+        'statusCode': 200,
+        'body': json.dumps('Hello from Lambda!')
     }

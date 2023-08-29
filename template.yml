@@ -1,0 +1,369 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: "AWS::Serverless-2016-10-31"
+Description: "AWS workshop for Architecting Microservices in AWS"
+
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: stockbuckluck
+  IntakeStreamQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: stock_queue
+  LambdaLayer:
+    Type: AWS:Lambda:LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.11
+      Content: 
+        S3Bucket: stockbuckluck
+        S3Key: layer_zip.zip
+      LayerName: generic_layer
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary: 
+        Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/VA-PB-Standard
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyDocument: 
+            Statement: 
+              - Action: 
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutRetentionPolicy"
+                  - "logs:DescribeLogGroups"
+                  - "logs:DescribeLogStreams"
+                  - "logs:PutLogEvents"
+                  - "logs:GetLogEvents"
+                Effect: Allow
+                Resource: "arn:aws:logs:*:*:*"
+              - Action: 
+                  - "sqs:SendMessage"
+                  - "sqs:DeleteMessage"
+                  - "sqs:ReceiveMessage"
+                  - "sqs:GetQueueAttributes"
+                Effect: Allow
+                Resource: "*"
+              - Effect: Allow
+                Action: 
+                  - lambda:InvokeFunction
+                Resource: "*"
+              - Action:
+                  - "ses:SendEmail"
+                  - "ses:SendRawEmail"
+            Effect: Allow
+            Resource: '*'
+            Version: "2012-10-17"
+          PolicyName: 
+            Fn::Sub: ${ApplicationName}-policy-${EnvType}
+      Tags:
+        - Key: Group
+          Value:
+            Ref: GroupName
+        - Key: VA-ApplicationId
+          Value: 
+            Ref: AppId
+        - Key: VA-EnvironmentType
+          Value: 
+            Ref: EnvType
+        - Key: VA-DeploymentZone
+          Value: 
+            Ref: DeploymentZone
+        - Key: VA-BusinessUnit
+          Value: 
+            Ref: BizUnit
+        - Key: IoT-DataSource
+          Value:
+            Ref: OemName
+        - Key: IoT-BusinessGroup
+          Value: PartnerServices
+        - Key: IoT-AccountName
+          Value:
+            Ref: OemName
+  
+  #Lambdas section
+  StockInfoProvider:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: stock_info_provider
+      Handler: main.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Layers: 
+        - 
+          Ref: LambdaLayer
+      Environment:
+        Variables:
+          SQS_QUEUE_URL: !Ref IntakeStreamQueue
+      Code:
+        ZipFile: |
+          import json
+          import random
+          import boto3
+          import os
+
+          stock_available = ['ADBL','CZBIL','EBL','GBIME','HBL', 'KBL','MBL','NABIL','NBL','NCCB','PCBL','PRVU','SBI','SCB','SRBL','STC','API','UIC','LIC','NLIC']
+          stock_current_price_dict = {}
+
+          def load_stock():
+              buy_random = random.randint(0, len(stock_available)-1)
+              sell_random = random.randint(0, len(stock_available)-1)
+              while(buy_random == sell_random):
+                  sell_random = random.randint(0, len(stock_available)-1)
+
+              for stock in stock_available:
+                  random_number = random.randint(150, 650)
+                  stock_current_price_dict[stock] = random_number
+
+              stock_current_price_dict[stock_available[buy_random]] = random.randint(101, 149)
+              stock_current_price_dict[stock_available[sell_random]] = random.randint(651, 800)
+
+          sqs = boto3.client('sqs')
+          def lambda_handler(event, context):
+              try:
+                  load_stock()
+                  # Send the event payload to an SQS queue
+                  queue_url = os.environ['SQS_QUEUE_URL']
+                  for stock, price in stock_current_price_dict.items():
+                      a = sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps({stock: price}))
+
+                  print("Event payload sent to SQS")
+
+                  return {
+                      'statusCode': 200,
+                      'body': 'Event processed and sent to SQS'
+                  }
+              except Exception as e:
+                  print("Error processing messages:", e)
+                  return {
+                      'statusCode': 500,
+                      'body': 'Error processing event: ' + str(e)
+                  }
+      Runtime: python3.11
+  StockInfoConsumer:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: stock_info_consumer
+      Handler: main.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Layers: 
+        - 
+          Ref: LambdaLayer
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: ""
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+
+          stepfunctions = boto3.client('stepfunctions')
+
+          def lambda_handler(event, context):
+              try:
+                  for record in event['Records']:
+                      # Process SQS message
+                      stock_detail = record['body']
+                      print("Message received from SQS:", stock_detail)
+
+                      # Trigger Step Function with the message data as input
+                      state_machine_arn = os.environ['STATE_MACHINE_ARN']
+                      response = stepfunctions.start_execution(
+                          stateMachineArn=state_machine_arn,
+                          input=stock_detail
+                      )
+
+                      print("Step Function execution triggered:", response)
+
+                  return {
+                      'statusCode': 200,
+                      'body': 'Messages processed and Step Function triggered'
+                  }
+              except Exception as e:
+                  print("Error processing messages:", e)
+                  return {
+                      'statusCode': 500,
+                      'body': 'Error processing messages: ' + str(e)
+                  }
+      Runtime: python3.11
+  GenerateStockRecommendation:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: generate_stock_recommendation
+      Handler: main.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Layers: 
+        - 
+          Ref: LambdaLayer
+      Environment:
+        Variables:
+          STOCK_PORTFOLIO: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
+      Code:
+        ZipFile: |
+          import os
+
+          def lambda_handler(event, context):
+              try:
+          
+                  stock_live_details = event
+                  print("Input data from Step Functions:", stock_live_details)
+                  
+                  stock_portfolio_str = os.environ['STOCK_PORTFOLIO'] # comma separated stock names from given list: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
+                  stock_portfolio_list = stock_portfolio_str.split(',')
+                  for owned_stock_name in stock_portfolio_list:
+                      owned_stock_name = owned_stock_name.strip().upper()
+          
+                  recommendation = generate_stock_recommendation(stock_portfolio_list, stock_live_details)
+          
+                  return {
+                      'statusCode': 200,
+                      'body': recommendation
+                  }
+              except Exception as e:
+                  error_message = {
+                      'status': 'error',
+                      'message': 'Error processing input: ' + str(e)
+                  }
+                  return {
+                      'statusCode': 500,
+                      'body': error_message
+                  }
+          
+          
+          def generate_stock_recommendation(stock_portfolio_list, stock_live_details):
+              current_stock_name = next(iter(stock_live_details))
+              current_stock_price = stock_live_details[current_stock_name]
+          
+              if current_stock_name in stock_portfolio_list:
+                  if current_stock_price > 650:
+                      return ({"status":"sell", "stock_name":current_stock_name, "rate": current_stock_price})
+                  elif current_stock_price < 150:
+                      return ({"status":"buy", "stock_name":current_stock_name, "rate": current_stock_price})
+                  else:
+                      return ({"status":"hold", "stock_name":current_stock_name, "rate": current_stock_price})
+                  
+              return ({"status":"not_owned", "stock_name":"", "price": ""})
+
+      Runtime: python3.11
+  BuyStock:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: buy_stock
+      Handler: main.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Layers: 
+        - 
+          Ref: LambdaLayer
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+          try:
+              default_stock_quantity = 50
+              stock_name = event['stock_name']
+              rate = event['rate']
+
+              # buy and process the stock (simulating buying)
+              return {
+                  'statusCode': 200,
+                  'body': f'{default_stock_quantity} stocks for {stock_name} bought at {rate} rate for total amount {rate * default_stock_quantity}.'
+              }
+          except Exception as e:
+              return {
+                  'statusCode': 500,
+                  'body': 'Error processing buy: ' + str(e)
+              }
+
+
+      Runtime: python3.11
+  SellStock:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: sell_stock
+      Handler: main.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Layers: 
+        - 
+          Ref: LambdaLayer
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+          try:
+              default_stock_quantity = 50
+              stock_name = event['stock_name']
+              rate = event['rate']
+
+              # buy and process the stock (simulating buying)
+              return {
+                  'statusCode': 200,
+                  'body': f'{default_stock_quantity} stocks for {stock_name} sold at {rate} rate for total amount {rate * default_stock_quantity}.'
+              }
+          except Exception as e:
+              return {
+                  'statusCode': 500,
+                  'body': 'Error processing buy: ' + str(e)
+              }
+      Runtime: python3.11
+  BuyAndSellReport:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: buy_and_sell_report
+      Handler: main.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Layers: 
+        - 
+          Ref: LambdaLayer
+      Environment:
+        Variables:
+          RECIPIENT_EMAIL_ADDRESS: "workshop@yopmail.com"
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+
+          client = boto3.client('ses')
+
+          def lambda_handler(event, context):
+              recipient_email_address = os.environ['RECIPIENT_EMAIL_ADDRESS']
+              response = client.send_email(
+              Destination={
+                  'ToAddresses': [f'{recipient_email_address}']
+              },
+              Message={
+                  'Body': {
+                      'Text': {
+                          'Charset': 'UTF-8',
+                          'Data': f"{event['body']}",
+                      }
+                  },
+                  'Subject': {
+                      'Charset': 'UTF-8',
+                      'Data': 'Stock Buy/Sell Info',
+                  },
+              },
+              Source= recipient_email_address
+              )
+
+              return {
+                  'statusCode': 200,
+                  'body': "Email Sent Successfully. MessageId is: " + response['MessageId']
+              }
+      Runtime: python3.11
+
+  # sqs trigger for stock_info_consumer
+  SqsEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties: 
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn: !GetAtt IntakeStreamQueue.Arn
+      FunctionName: !Ref StockInfoConsumer

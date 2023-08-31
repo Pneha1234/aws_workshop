@@ -5,8 +5,8 @@ Thorough guide for the workshop.
 ![](./Images/architecturediagram.png "Workshop AWS architecture diagram")
 
 ## Prerequisites to build this solution locally
-1. .Net 6 SDK
-2. Visual Studio 2022
+1.python 3.11 installed in the local machine
+2. VS Code/Pycharm
 
 ## AWS services used
 1. Eventbridge (for triggering the workflow every 5 mins)

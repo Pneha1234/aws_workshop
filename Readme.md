@@ -1,4 +1,4 @@
-Welcome to the Workshop Code Repository! This repository contains code examples, projects, and resources related to the workshops conducted by Verisk on Architecting Microservices with AWS. Feel free to explore the content and use it to enhance your learning experience.
+Welcome to the Workshop Code Repository! This repository contains code examples, projects, and resources related to the workshops conducted by Verisk Nepal on Architecting Microservices with AWS. Feel free to explore the content and use it to enhance your learning experience.
 
 ## Table of Contents
 

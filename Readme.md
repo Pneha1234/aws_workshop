@@ -34,7 +34,8 @@ This repository is organized into different sections:
          - [buy_stock](#buy-stock)
          - [sell_stock](#sell-stock)
          - [buy_and_sell_report](#buy-and-sell-report)
-       -[Step Function](#step-function)
+      - [Step Function](#step-function)
+
    
 - **/projects**: Hands-on projects and assignments.
 - **/resources**: Additional resources, slides, and materials.

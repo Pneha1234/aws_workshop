@@ -3,28 +3,13 @@ Transform: "AWS::Serverless-2016-10-31"
 Description: "AWS workshop for Architecting Microservices in AWS"
 
 Resources:
-  S3Bucket:
-    Type: AWS::S3::Bucket
-    Properties: 
-      BucketName: stockbuckluck
   IntakeStreamQueue:
     Type: "AWS::SQS::Queue"
     Properties:
       QueueName: stock_queue
-  LambdaLayer:
-    Type: AWS:Lambda:LayerVersion
-    Properties:
-      CompatibleRuntimes:
-        - python3.11
-      Content: 
-        S3Bucket: stockbuckluck
-        S3Key: layer_zip.zip
-      LayerName: generic_layer
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      PermissionsBoundary: 
-        Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/VA-PB-Standard
       AssumeRolePolicyDocument:
         Statement:
           - Action: 
@@ -66,31 +51,7 @@ Resources:
             Resource: '*'
             Version: "2012-10-17"
           PolicyName: 
-            Fn::Sub: ${ApplicationName}-policy-${EnvType}
-      Tags:
-        - Key: Group
-          Value:
-            Ref: GroupName
-        - Key: VA-ApplicationId
-          Value: 
-            Ref: AppId
-        - Key: VA-EnvironmentType
-          Value: 
-            Ref: EnvType
-        - Key: VA-DeploymentZone
-          Value: 
-            Ref: DeploymentZone
-        - Key: VA-BusinessUnit
-          Value: 
-            Ref: BizUnit
-        - Key: IoT-DataSource
-          Value:
-            Ref: OemName
-        - Key: IoT-BusinessGroup
-          Value: PartnerServices
-        - Key: IoT-AccountName
-          Value:
-            Ref: OemName
+            Fn::Sub: lambda-policy
   
   #Lambdas section
   StockInfoProvider:
@@ -99,9 +60,6 @@ Resources:
       FunctionName: stock_info_provider
       Handler: main.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers: 
-        - 
-          Ref: LambdaLayer
       Environment:
         Variables:
           SQS_QUEUE_URL: !Ref IntakeStreamQueue
@@ -156,9 +114,6 @@ Resources:
       FunctionName: stock_info_consumer
       Handler: main.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers: 
-        - 
-          Ref: LambdaLayer
       Environment:
         Variables:
           STATE_MACHINE_ARN: ""
@@ -170,10 +125,23 @@ Resources:
           stepfunctions = boto3.client('stepfunctions')
 
           def lambda_handler(event, context):
+              stock_portfolio_str = os.environ['STOCK_PORTFOLIO'] # comma separated stock names from given list: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
+              stock_portfolio_list = stock_portfolio_str.split(',')
+              for owned_stock_name in stock_portfolio_list:
+                  owned_stock_name = owned_stock_name.strip().upper()
+
+
+
               try:
                   for record in event['Records']:
                       # Process SQS message
                       stock_detail = record['body']
+
+                      filtered_stock_detail = {}
+                      for stock_name in stock_portfolio_list:
+                          if stock_name in stock_detail:
+                              filtered_stock_detail[stock_name] = stock_detail[stock_name]
+
                       print("Message received from SQS:", stock_detail)
 
                       # Trigger Step Function with the message data as input
@@ -202,9 +170,6 @@ Resources:
       FunctionName: generate_stock_recommendation
       Handler: main.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers: 
-        - 
-          Ref: LambdaLayer
       Environment:
         Variables:
           STOCK_PORTFOLIO: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
@@ -214,17 +179,12 @@ Resources:
 
           def lambda_handler(event, context):
               try:
-          
+
                   stock_live_details = event
                   print("Input data from Step Functions:", stock_live_details)
-                  
-                  stock_portfolio_str = os.environ['STOCK_PORTFOLIO'] # comma separated stock names from given list: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
-                  stock_portfolio_list = stock_portfolio_str.split(',')
-                  for owned_stock_name in stock_portfolio_list:
-                      owned_stock_name = owned_stock_name.strip().upper()
-          
-                  recommendation = generate_stock_recommendation(stock_portfolio_list, stock_live_details)
-          
+
+                  recommendation = generate_stock_recommendation(stock_live_details)
+
                   return {
                       'statusCode': 200,
                       'body': recommendation
@@ -238,22 +198,18 @@ Resources:
                       'statusCode': 500,
                       'body': error_message
                   }
-          
-          
-          def generate_stock_recommendation(stock_portfolio_list, stock_live_details):
+
+
+          def generate_stock_recommendation(stock_live_details):
               current_stock_name = next(iter(stock_live_details))
               current_stock_price = stock_live_details[current_stock_name]
-          
-              if current_stock_name in stock_portfolio_list:
-                  if current_stock_price > 650:
-                      return ({"status":"sell", "stock_name":current_stock_name, "rate": current_stock_price})
-                  elif current_stock_price < 150:
-                      return ({"status":"buy", "stock_name":current_stock_name, "rate": current_stock_price})
-                  else:
-                      return ({"status":"hold", "stock_name":current_stock_name, "rate": current_stock_price})
-                  
-              return ({"status":"not_owned", "stock_name":"", "price": ""})
 
+              if current_stock_price > 650:
+                  return ({"status":"sell", "stock_name":current_stock_name, "rate": current_stock_price})
+              elif current_stock_price < 150:
+                  return ({"status":"buy", "stock_name":current_stock_name, "rate": current_stock_price})
+              else:
+                  return ({"status":"hold", "stock_name":current_stock_name, "rate": current_stock_price})
       Runtime: python3.11
   BuyStock:
     Type: 'AWS::Lambda::Function'
@@ -261,9 +217,6 @@ Resources:
       FunctionName: buy_stock
       Handler: main.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers: 
-        - 
-          Ref: LambdaLayer
       Code:
         ZipFile: |
           def lambda_handler(event, context):
@@ -291,9 +244,6 @@ Resources:
       FunctionName: sell_stock
       Handler: main.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers: 
-        - 
-          Ref: LambdaLayer
       Code:
         ZipFile: |
           def lambda_handler(event, context):
@@ -319,9 +269,6 @@ Resources:
       FunctionName: buy_and_sell_report
       Handler: main.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers: 
-        - 
-          Ref: LambdaLayer
       Environment:
         Variables:
           RECIPIENT_EMAIL_ADDRESS: "workshop@yopmail.com"

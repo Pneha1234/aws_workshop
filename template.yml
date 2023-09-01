@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: "AWS::Serverless-2016-10-31"
 Description: "AWS workshop for Architecting Microservices in AWS"
+# Note for deployment: 
+# 1. For this template to work, first create a lambda layer named generic_layer with layer_zip.zip file from the repo and 
+#    python1.11 as the runtime version selected.
+# 2. put workshop@yopmail.com as verified identity in SES
 
 Resources:
   IntakeStreamQueue:
@@ -128,6 +132,7 @@ Resources:
           STOCK_PORTFOLIO: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
       Code:
         ZipFile: |
+          import json
           import boto3
           import os
 
@@ -137,30 +142,29 @@ Resources:
               stock_portfolio_str = os.environ['STOCK_PORTFOLIO'] # comma separated stock names from given list: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
               stock_portfolio_list = stock_portfolio_str.split(',')
               for owned_stock_name in stock_portfolio_list:
-                  owned_stock_name = owned_stock_name.strip().upper()
-
-
+                  owned_stock_name = owned_stock_name.strip().upper()    
 
               try:
                   for record in event['Records']:
                       # Process SQS message
-                      stock_detail = record['body']
+                      current_stock_detail = record['body']
+                      current_stock_name = next(iter(json.loads(current_stock_detail)))
 
-                      filtered_stock_detail = {}
-                      for stock_name in stock_portfolio_list:
-                          if stock_name in stock_detail:
-                              filtered_stock_detail[stock_name] = stock_detail[stock_name]
+                      if current_stock_name not in stock_portfolio_list:
+                          return {
+                          'statusCode': 200,
+                          'body': 'stock not owned'
+                      }
 
-                      print("Message received from SQS:", stock_detail)
+                      print("Message received from SQS:", current_stock_detail)
 
-                      # Trigger Step Function with the message data as input
-                      state_machine_arn = os.environ['STATE_MACHINE_ARN']
-                      response = stepfunctions.start_execution(
-                          stateMachineArn=state_machine_arn,
-                          input=stock_detail
-                      )
-
-                      print("Step Function execution triggered:", response)
+                  # Trigger Step Function with the message data as input
+                  state_machine_arn = os.environ['STATE_MACHINE_ARN']
+                  response = stepfunctions.start_execution(
+                      stateMachineArn=state_machine_arn,
+                      input=current_stock_detail
+                  )
+                  print("Step Function execution triggered:", response)
 
                   return {
                       'statusCode': 200,
@@ -226,21 +230,21 @@ Resources:
       Code:
         ZipFile: |
           def lambda_handler(event, context):
-          try:
-              default_stock_quantity = 50
-              stock_name = event['stock_name']
-              rate = event['rate']
+              try:
+                  default_stock_quantity = 50
+                  stock_name = event['stock_name']
+                  rate = event['rate']
 
-              # buy and process the stock (simulating buying)
-              return {
-                  'statusCode': 200,
-                  'body': f'{default_stock_quantity} stocks for {stock_name} bought at {rate} rate for total amount {rate * default_stock_quantity}.'
-              }
-          except Exception as e:
-              return {
-                  'statusCode': 500,
-                  'body': 'Error processing buy: ' + str(e)
-              }
+                  # buy and process the stock (simulating buying)
+                  return {
+                      'statusCode': 200,
+                      'body': f'{default_stock_quantity} stocks for {stock_name} bought at {rate} rate for total amount {rate * default_stock_quantity}.'
+                  }
+              except Exception as e:
+                  return {
+                      'statusCode': 500,
+                      'body': 'Error processing buy: ' + str(e)
+                  }
       Runtime: python3.11
   SellStock:
     Type: 'AWS::Lambda::Function'
@@ -251,21 +255,21 @@ Resources:
       Code:
         ZipFile: |
           def lambda_handler(event, context):
-          try:
-              default_stock_quantity = 50
-              stock_name = event['stock_name']
-              rate = event['rate']
+              try:
+                  default_stock_quantity = 50
+                  stock_name = event['stock_name']
+                  rate = event['rate']
 
-              # buy and process the stock (simulating buying)
-              return {
-                  'statusCode': 200,
-                  'body': f'{default_stock_quantity} stocks for {stock_name} sold at {rate} rate for total amount {rate * default_stock_quantity}.'
-              }
-          except Exception as e:
-              return {
-                  'statusCode': 500,
-                  'body': 'Error processing buy: ' + str(e)
-              }
+                  # buy and process the stock (simulating buying)
+                  return {
+                      'statusCode': 200,
+                      'body': f'{default_stock_quantity} stocks for {stock_name} sold at {rate} rate for total amount {rate * default_stock_quantity}.'
+                  }
+              except Exception as e:
+                  return {
+                      'statusCode': 500,
+                      'body': 'Error processing buy: ' + str(e)
+                  }
       Runtime: python3.11
   BuyAndSellReport:
     Type: 'AWS::Lambda::Function'
@@ -408,7 +412,7 @@ Resources:
           - |
             {
               "Comment": "A description of my state machine",
-              "StartAt": "stock info provider",
+              "StartAt": "generate stock recommendation",
               "States": {
                 "generate stock recommendation": {
                   "Type": "Task",

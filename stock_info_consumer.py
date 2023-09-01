@@ -12,25 +12,28 @@ def lambda_handler(event, context):
     
 
     try:
+        filtered_stock_detail = {}
         for record in event['Records']:
             # Process SQS message
             stock_detail = record['body']
             
-            filtered_stock_detail = {}
             for stock_name in stock_portfolio_list:
-                if stock_name in stock_detail:
-                    filtered_stock_detail[stock_name] = stock_detail[stock_name]
+                if stock_name not in stock_detail:
+                    return {
+                    'statusCode': 200,
+                    'body': 'stock not owned'
+                }
+                filtered_stock_detail[stock_name] = stock_detail[stock_name]
 
             print("Message received from SQS:", stock_detail)
 
-            # Trigger Step Function with the message data as input
-            state_machine_arn = os.environ['STATE_MACHINE_ARN']
-            response = stepfunctions.start_execution(
-                stateMachineArn=state_machine_arn,
-                input=stock_detail
-            )
-
-            print("Step Function execution triggered:", response)
+        # Trigger Step Function with the message data as input
+        state_machine_arn = os.environ['STATE_MACHINE_ARN']
+        response = stepfunctions.start_execution(
+            stateMachineArn=state_machine_arn,
+            input=filtered_stock_detail
+        )
+        print("Step Function execution triggered:", response)
 
         return {
             'statusCode': 200,

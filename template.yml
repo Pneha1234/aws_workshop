@@ -47,19 +47,24 @@ Resources:
               - Action:
                   - "ses:SendEmail"
                   - "ses:SendRawEmail"
-            Effect: Allow
-            Resource: '*'
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - "states:StartExecution"
+                Effect: Allow
+                Resource: '*'
             Version: "2012-10-17"
-          PolicyName: 
-            Fn::Sub: lambda-policy
+          PolicyName: workshop-lambda-policy
   
   #Lambdas section
   StockInfoProvider:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: stock_info_provider
-      Handler: main.lambda_handler
+      Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
+      Layers:
+        - Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:generic_layer:1
       Environment:
         Variables:
           SQS_QUEUE_URL: !Ref IntakeStreamQueue
@@ -112,11 +117,15 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: stock_info_consumer
-      Handler: main.lambda_handler
+      Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
+      Layers:
+       - Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:generic_layer:1
       Environment:
         Variables:
-          STATE_MACHINE_ARN: ""
+          STATE_MACHINE_ARN: 
+            Fn::Sub: arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:stock-state-machine
+          STOCK_PORTFOLIO: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
       Code:
         ZipFile: |
           import boto3
@@ -168,11 +177,8 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: generate_stock_recommendation
-      Handler: main.lambda_handler
+      Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Environment:
-        Variables:
-          STOCK_PORTFOLIO: ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC
       Code:
         ZipFile: |
           import os
@@ -215,7 +221,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: buy_stock
-      Handler: main.lambda_handler
+      Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
         ZipFile: |
@@ -235,14 +241,12 @@ Resources:
                   'statusCode': 500,
                   'body': 'Error processing buy: ' + str(e)
               }
-
-
       Runtime: python3.11
   SellStock:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: sell_stock
-      Handler: main.lambda_handler
+      Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
         ZipFile: |
@@ -267,8 +271,10 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: buy_and_sell_report
-      Handler: main.lambda_handler
+      Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
+      Layers:
+       - Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:generic_layer:1
       Environment:
         Variables:
           RECIPIENT_EMAIL_ADDRESS: "workshop@yopmail.com"
@@ -314,3 +320,215 @@ Resources:
       Enabled: true
       EventSourceArn: !GetAtt IntakeStreamQueue.Arn
       FunctionName: !Ref StockInfoConsumer
+
+  # Event bridge trigger for stock_info_provider
+  PermissionCWEvent:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: StockInfoProvider
+      SourceArn:
+        Fn::GetAtt:
+        - ProviderLambdaTrigger
+        - Arn
+      Principal: events.amazonaws.com
+  TriggerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action: 
+                  - lambda:InvokeFunction
+                Effect: Allow
+                Resource: "*"
+              - Action: 
+                  - states:StartExecution
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: workshop-trigger-policy
+  ProviderLambdaTrigger:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "Triggering workflow every 5 mins."
+      ScheduleExpression: "rate(5 minutes)"
+      State: "ENABLED"
+      Name: provider-lambda-trigger
+      Targets:
+        - Arn:
+            Fn::GetAtt: 
+              - StockInfoProvider
+              - Arn
+          Id: "StockInfoProvider"
+  
+  # Step function for services orchestration
+  StateMachineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: 
+                - states.amazonaws.com
+        Version: "2012-10-17"
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: 
+                - lambda:InvokeFunction
+                Resource: "*"
+              - Effect: Allow
+                Action: 
+                - iam:PassRole
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: StateMachinePolicy
+  StockStateMachine:
+    Type: 'AWS::StepFunctions::StateMachine'
+    Properties:
+      DefinitionString:
+        Fn::Sub: 
+          - |
+            {
+              "Comment": "A description of my state machine",
+              "StartAt": "stock info provider",
+              "States": {
+                "generate stock recommendation": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "OutputPath": "$.Payload.body",
+                  "Parameters": {
+                    "Payload.$": "$",
+                    "FunctionName": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:generate_stock_recommendation:$LATEST"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 6,
+                      "BackoffRate": 2
+                    }
+                  ],
+                  "Next": "buy/sell/none"
+                },
+                "buy/sell/none": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.status",
+                      "StringEquals": "buy",
+                      "Next": "buy stock",
+                      "Comment": "buy"
+                    },
+                    {
+                      "Variable": "$.status",
+                      "StringEquals": "sell",
+                      "Next": "sell stock",
+                      "Comment": "sell"
+                    }
+                  ],
+                  "Default": "Success"
+                },
+                "buy stock": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "OutputPath": "$.Payload",
+                  "Parameters": {
+                    "Payload.$": "$",
+                    "FunctionName": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:buy_stock:$LATEST"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 6,
+                      "BackoffRate": 2
+                    }
+                  ],
+                  "Next": "buy and sell report"
+                },
+                "Success": {
+                  "Type": "Succeed"
+                },
+                "sell stock": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "OutputPath": "$.Payload",
+                  "Parameters": {
+                    "Payload.$": "$",
+                    "FunctionName": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:sell_stock:$LATEST"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 6,
+                      "BackoffRate": 2
+                    }
+                  ],
+                  "Next": "buy and sell report"
+                },
+                "buy and sell report": {
+                  "Type": "Task",
+                  "Resource": "arn:aws:states:::lambda:invoke",
+                  "OutputPath": "$.Payload",
+                  "Parameters": {
+                    "Payload.$": "$",
+                    "FunctionName": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:buy_and_sell_report:$LATEST"
+                  },
+                  "Retry": [
+                    {
+                      "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException",
+                        "Lambda.TooManyRequestsException"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 6,
+                      "BackoffRate": 2
+                    }
+                  ],
+                  "Next": "Success"
+                }
+              }
+            }
+          - Hila: 
+              Fn::Sub: arn:aws:batch:${AWS::Region}:${AWS::AccountId}
+      RoleArn:
+        Fn::GetAtt: 
+        - StateMachineServiceRole
+        - Arn
+      StateMachineName: stock-state-machine

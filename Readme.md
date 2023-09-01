@@ -42,7 +42,7 @@ This repository is organized into different sections:
 
 ## Getting Started
 
-Welcome to the AWS Workshop! This guide will walk you through setting up and utilizing the Workshop Code Repository.
+This guide will walk you through setting up and utilizing the Workshop Code Repository.
 
 ### Cloning the Repository
 

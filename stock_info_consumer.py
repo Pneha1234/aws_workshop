@@ -14,7 +14,7 @@ def lambda_handler(event, context):
         for record in event['Records']:
             # Process SQS message
             current_stock_detail = record['body']
-            current_stock_name = next(iter(json.loads(current_stock_detail)))
+            current_stock_name = next(iter(current_stock_detail))
             
             if current_stock_name not in stock_portfolio_list:
                 return {

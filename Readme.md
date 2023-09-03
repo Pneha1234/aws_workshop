@@ -265,6 +265,8 @@ def generate_stock_recommendation(stock_live_details):
         return ({"status":"hold", "stock_name":current_stock_name, "rate": current_stock_price})
         
 ```
+- for env varible:
+     * [ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC]
 ### buy_stock:
     * This is the service responsible for processing buy of the ones recommended by above recommendation service.
     * Copy the code from buy_stock.py and paste into the code console on the new lambda creation page on management console.

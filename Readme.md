@@ -93,7 +93,9 @@ This layer contains third-party dependencies required by the Lambdas.
 
 ## SQS: 
 -stock_queue
+
 Create an SQS queue to hold messages and trigger the stock_info_consumer Lambda.
+
       * Goto Amazon SQS.
       * Under 'Get Started', click 'Create queue'.
       * Under 'Details', give a 'Name'.

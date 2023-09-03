@@ -12,7 +12,7 @@ Welcome to the Workshop Code Repository! This repository contains code examples,
 
 ## Introduction
 
-This repository serves as a central hub for code samples and projects covered during this workshops. Even after attending the workshop, you'll find valuable resources to help you understand Architecting Microservices with AWS and implement various concepts effectively.
+This repository serves as a central hub for code samples and projects covered during this workshop. Even after attending the workshop, you'll find valuable resources to help you understand Architecting Microservices with AWS and implement various concepts effectively.
 
 ## Contents
 
@@ -81,7 +81,7 @@ To set up the workshop environment, we'll configure various AWS services as foll
 ## Lambda Layer: 
 This layer contains third-party dependencies required by the Lambdas.
 - Download layer_zip.zip from [here](https://github.com/Pneha1234/worshop_code/blob/master/layer_zip.zip)
-- To Create a custom Lambda layer using the layer_zip.zip file with Python 3.11 runtime, use the following steps ,in the AWS Management Console:
+- To Create a custom Lambda layer using the layer_zip.zip file with Python 3.11 runtime, use the following steps, in the AWS Management Console:
   
         * Navigate to the Lambda service.
         * Go to "Layers" in the left menu.
@@ -94,10 +94,16 @@ This layer contains third-party dependencies required by the Lambdas.
 ## SQS: 
 -stock_queue
 Create an SQS queue to hold messages and trigger the stock_info_consumer Lambda.
+      * Goto Amazon SQS.
+      * Under 'Get Started', click 'Create queue'.
+      * Under 'Details', give a 'Name'.
+      * Keep all the 'Configuration' default for this demonstration.
+      * Click on 'Create queue' at the bottom of the page.
+      * SQS is created!
 
 ### SES: 
 Verify your email identity under SES for sending email reports.
-- To Verify an email, use the following steps ,in the AWS Management Console:
+- To Verify an email, use the following steps, in the AWS Management Console:
    
       * Navigate to SES in the dashboard.
       * Click "Email Addresses" on the left.
@@ -111,7 +117,7 @@ Verify your email identity under SES for sending email reports.
 ## Lambda:
  ### stock_info_provider:
     * This is the service responsible for generating live prices and feeding to sqs queue. 
-    * Copy the code from stock_info_provider.py and paste into the code console on the new lambda creation page on management   console. 
+    * Copy the code from stock_info_provider.py and paste it into the code console on the new lambda creation page on the management   console. 
     * Add the generic layer created above to this lambda.
     * Provide environment variables required i.e. SQS_QUEUE_URL in Environment variables section under Configuration.
     * Goto the permission section and add sqs access to the role.
@@ -340,12 +346,11 @@ def lambda_handler(event, context):
 ```
 ### Step Function:
 - stock_state_machine:
-    * First lets add all the states as in the figure: Add lambda invocation state, add choice state under this, add lambda invocation under rule1, add another lambda invocation under default, then add another lambda invocation under one of the lambda then a succeed section under that lambda.
-    * This is the step function that is responsible for orchestration the above created lambdas into a functioning workflow.
-    * Under start in workflow studio add lambda invocation state and on the right side under State name add : Generate stock recommendation, Leave integration type as it is, under function name select enter function name and select the generate_stock_recommendation lambda as the lambda, under Payload select use state input as payload, then go to the output tab by scrolling above, then select Filter output with OutputPath and add $.Payload.body in the text box.
-    * Now Under Flow tab in the upper left side navigation section add a choice state under the generate stock recommendation state,
-    now on the configuration section add.
-    * Under start in workflow studio add lambda invocation state and on the right side under State name add : Generate stock recommendation, Leave integration type as it is, under function name select enter function name and select the generate_stock_recommendation lambda as the lambda.
+    * First let's add all the states as in the figure: Add lambda invocation state, add choice state under this, add lambda invocation under rule1, add another lambda invocation under default, then add another lambda invocation under one of the lambda then a succeed section under that lambda.
+    * This is the step function that is responsible for the orchestration of lambdas created above into a functioning workflow.
+    * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name, select enter function name and select the generate_stock_recommendation lambda as the lambda, under Payload select use state input as payload, then go to the output tab by scrolling above, then select Filter output with OutputPath and add $.Payload.body in the text box.
+    * Now Under Flow tab in the upper left side navigation section add a choice state under the generate stock recommendation state, now on the configuration section add.
+    * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name select enter function name and select the generate_stock_recommendation lambda as the lambda.
 
 ## Usage
 Feel free to utilize the content in this repository to enhance your understanding of [Topic]. Run code examples, complete projects, and refer to resources to reinforce your learning.

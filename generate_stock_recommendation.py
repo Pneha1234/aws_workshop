@@ -20,7 +20,9 @@ def lambda_handler(event, context):
         }
 
 
-def generate_stock_recommendation(stock_live_details):
+def generate_stock_recommendation(stock_portfolio_list, stock_live_details):
+    # suggested_code
+    # current_stock_name, current_stock_price = next(iter(stock_live_details.items()))
     current_stock_name = next(iter(stock_live_details))
     current_stock_price = stock_live_details[current_stock_name]
     if current_stock_price > 650:

@@ -231,6 +231,7 @@ def lambda_handler(event, context):
   - AmazonSQSFullAccess
   -  AmazonEventBridgeFullAccess
   -  AWSStepFunctionsFullAccess
+  -  AmazonSESFullAccess
    
 - Please copy the code from the below snippet
 ```python

@@ -171,7 +171,7 @@ def lambda_handler(event, context):
 ### stock_info_consumer:
     * This is the service responsible for triggering the step function for individual stock info from sqs(also triggered by sqs).
     * Copy the code from stock_info_consumer.py and paste into the code console on the new lambda creation page on management   console.
-    * Provide environment variables required i.e. STATE_MACHINE_ARN in Environment variables section under Configuration.
+    * Provide environment variables required i.e. STATE_MACHINE_ARN and STOCK_PORTFOLIO with comma separated values without bracket (ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC) in Environment variables section under Configuration.
     * Add the generic layer created above to this lambda.
     * Goto the permission section and add sqs, stepfunction access to the role.
     * Finally, add the trigger with batch size 1 and the name pointing to above created sqs queue.

@@ -52,7 +52,7 @@ To get started, follow these steps:
 
 ```bash
 $ git clone https://github.com/Pneha1234/aws_workshop.git
-$ cd workshop_code
+$ cd aws_workshop
 ```
 
 ### Prerequisites

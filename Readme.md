@@ -228,7 +228,7 @@ def lambda_handler(event, context):
   - AWSLambdaBasicExecutionRole
   - AmazonSQSFullAccess
   -  AmazonEventBridgeFullAccess
-  -  WSStepFunctionsFullAccess
+  -  AWSStepFunctionsFullAccess
    
 - Please copy the code from the below snippet
 ```python

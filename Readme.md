@@ -51,7 +51,7 @@ To get started, follow these steps:
 1. Clone the repository to your local machine:
 
 ```bash
-$ git clone https://github.com/Pneha1234/workshop_code.git
+$ git clone https://github.com/Pneha1234/aws_workshop.git
 $ cd workshop_code
 ```
 

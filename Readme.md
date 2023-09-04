@@ -222,6 +222,8 @@ def lambda_handler(event, context):
             'body': 'Error processing messages: ' + str(e)
         }
 ```
+- for env varible:
+     * [ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC]
 ### generate_stock_recommendation:
     * This is the service responsible for generating buy, sell or non recommendation from the fed input matching to the ones on the defined portfolio list in the environment variable.
 - roles
@@ -269,8 +271,7 @@ def generate_stock_recommendation(stock_live_details):
         return ({"status":"hold", "stock_name":current_stock_name, "rate": current_stock_price})
         
 ```
-- for env varible:
-     * [ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC]
+
 - test event:
      * {"PRVU": 295}
 ### buy_stock:

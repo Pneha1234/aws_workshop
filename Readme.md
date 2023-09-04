@@ -224,8 +224,12 @@ def lambda_handler(event, context):
 ```
 ### generate_stock_recommendation:
     * This is the service responsible for generating buy, sell or non recommendation from the fed input matching to the ones on the defined portfolio list in the environment variable.
-    * Copy the code from generate_stock_recommendation.py and paste into the code console on the new lambda creation page on management console.
-    * Provide environment variables required i.e. STOCK_PORTFOLIO with 15-20 values from (ADBL,CZBIL,EBL,GBIME,HBL, KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC) in Environment variables section under Configuration.
+- roles
+  - AWSLambdaBasicExecutionRole
+  - AmazonSQSFullAccess
+  -  AmazonEventBridgeFullAccess
+  -  WSStepFunctionsFullAccess
+   
 - Please copy the code from the below snippet
 ```python
 import os

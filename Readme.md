@@ -7,8 +7,6 @@ Welcome to the Workshop Code Repository! This repository contains code examples,
 - [Getting Started](#getting-started)
 - [Usage](#usage)
 - [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
 
 ## Introduction
 
@@ -105,10 +103,8 @@ Verify your email identity under SES for sending email reports.
 ## Lambda:
  ### stock_info_provider:
     * This is the service responsible for generating live prices and feeding to sqs queue. 
-    * Copy the code from stock_info_provider.py and paste it into the code console on the new lambda creation page on the management   console. 
-    * Add the generic layer created above to this lambda.
     * Provide environment variables required i.e. SQS_QUEUE_URL in Environment variables section under Configuration.
-    * Goto the permission section and add sqs access to the role.
+    * Goto the permission section and add sqs access and event bridge access to the role.i.e AmazonSQSFullAccess and AmazonEventBridgeFullAccess
    - Please copy the code from the following snippet
  ```python
 import json
@@ -159,8 +155,7 @@ def lambda_handler(event, context):
     * This is the service responsible for triggering the step function for individual stock info from sqs(also triggered by sqs).
     * Copy the code from stock_info_consumer.py and paste into the code console on the new lambda creation page on management   console.
     * Provide environment variables required i.e. STATE_MACHINE_ARN and STOCK_PORTFOLIO with comma separated values without bracket (ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC) in Environment variables section under Configuration.
-    * Add the generic layer created above to this lambda.
-    * Goto the permission section and add sqs, stepfunction access to the role.
+    * Goto the permission section and add sqs, stepfunction access to the role. i.e   AWSStepFunctionsFullAccess
     * Finally, add the trigger with batch size 1 and the name pointing to above created sqs queue.
    - Please copy the code from the following snippet
 ```python
@@ -209,17 +204,10 @@ def lambda_handler(event, context):
             'body': 'Error processing messages: ' + str(e)
         }
 ```
-- for env varible:
-     * [ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC]
 - [Back to Top](#top)
 ### generate_stock_recommendation:
     * This is the service responsible for generating buy, sell or non recommendation from the fed input matching to the ones on the defined portfolio list in the environment variable.
-- roles
-  - AWSLambdaBasicExecutionRole
-  - AmazonSQSFullAccess
-  -  AmazonEventBridgeFullAccess
-  -  AWSStepFunctionsFullAccess
-  -  AmazonSESFullAccess
+     * Goto the permission section and add aws lambda basic execution role access to the role. i.e   AWSLambdaBasicExecutionRole
    
 - Please copy the code from the below snippet
 ```python
@@ -266,7 +254,6 @@ def generate_stock_recommendation(stock_live_details):
 - [Back to Top](#top)
 ### buy_stock:
     * This is the service responsible for processing buy of the ones recommended by above recommendation service.
-    * Copy the code from buy_stock.py and paste into the code console on the new lambda creation page on management console.
    - Please use the below code snippet
 ```python
 def lambda_handler(event, context):
@@ -288,7 +275,6 @@ def lambda_handler(event, context):
 ```
 ### sell_stock:
     * This is the service responsible for processing sell of the ones recommended by above recommendation service.
-    * Copy the code from sell_stock.py and paste into the code console on the new lambda creation page on management console.
 ```python
 def lambda_handler(event, context):
     try:
@@ -310,10 +296,8 @@ def lambda_handler(event, context):
 [Back to Top](#top)
 ### buy_and_sell_report:
     * This is the service responsible for reporting the user by email for either of buy or sell report.
-    * Copy the code from buy_and_sell_report.py and paste into the code console on the new lambda creation page on management console.
     * Provide environment variables required i.e. RECIPIENT_EMAIL_ADDRESS with the verified email above under SES section in Environment variables section under Configuration.
-    * Add the generic layer created above to this lambda.
-    * Goto the permission section and add ses access to the role.
+    * Goto the permission section and add ses access to the role. i.e. AmazonSESFullAccess
 ```python
 import os
 import boto3
@@ -349,14 +333,14 @@ def lambda_handler(event, context):
 [Back to Top](#top)
 ### Step Function:
 - stock_state_machine:
-    * First let's add all the states as in the figure: Add lambda invocation state, add choice state under this, add lambda invocation under rule1, add another lambda invocation under default, then add another lambda invocation under one of the lambda then a succeed section under that lambda.
+     * First let's add all the states as in the figure: Add lambda invocation state, add choice state under this, add lambda invocation under rule1, add another lambda invocation under default, then add another lambda invocation under one of the lambda then a succeed section under that lambda.
     * This is the step function that is responsible for the orchestration of lambdas created above into a functioning workflow.
     * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name, select enter function name and select the generate_stock_recommendation lambda as the lambda, under Payload select use state input as payload, then go to the output tab by scrolling above, then select Filter output with OutputPath and add $.Payload.body in the text box.
     * Now Under Flow tab in the upper left side navigation section add a choice state under the generate stock recommendation state, now on the configuration section add.
     * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name select enter function name and select the generate_stock_recommendation lambda as the lambda.
 
 ## Usage
-Feel free to utilize the content in this repository to enhance your understanding of [Topic]. Run code examples, complete projects, and refer to resources to reinforce your learning.
+Feel free to utilize the content in this repository to enhance your understanding on AWS Services. Run code examples, complete projects, and refer to resources to reinforce your learning.
 
 ## Contributing
 If you'd like to contribute to this repository, follow these steps:

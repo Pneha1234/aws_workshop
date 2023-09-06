@@ -338,7 +338,7 @@ def lambda_handler(event, context):
     * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name, select enter function name and select the generate_stock_recommendation lambda as the lambda, under Payload select use state input as payload, then go to the output tab by scrolling above, then select Filter output with OutputPath and add $.Payload.body in the text box.
     * Now Under Flow tab in the upper left side navigation section add a choice state under the generate stock recommendation state, now on the configuration section add.
     * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name select enter function name and select the generate_stock_recommendation lambda as the lambda.
--[Back to Top](#top)
+- [Back to Top](#top)
 
 ### Additional Resources
 - [AWS Lambda Resources](https://aws.amazon.com/lambda/resources/?aws-lambda-resources-blog.sort-by=item.additionalFields.createdDate&aws-lambda-resources-blog.sort-order=desc)
@@ -347,8 +347,6 @@ def lambda_handler(event, context):
 - [AWS EventBridge](https://aws.amazon.com/eventbridge/resources/)
 - [AWS Step Function](https://aws.amazon.com/step-functions/resources/?step-functions.sort-by=item.additionalFields.postDateTime&step-functions.sort-order=desc)
 
-  
-- [Back to Top](#top)
 
 ## Usage
 Feel free to utilize the content in this repository to enhance your understanding on AWS Services. Run code examples, complete projects, and refer to resources to reinforce your learning.
@@ -361,3 +359,5 @@ If you'd like to contribute to this repository, follow these steps:
 - Make your changes and commit them: git commit -m 'Description of changes'.
 -  to the branch: git push origin feature-name.
 - Open a pull request.
+  
+-  [Back to Top](#top)

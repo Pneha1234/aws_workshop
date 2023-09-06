@@ -211,7 +211,7 @@ def lambda_handler(event, context):
 ```
 - for env varible:
      * [ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC]
-[Back to Top](#top)
+- [Back to Top](#top)
 ### generate_stock_recommendation:
     * This is the service responsible for generating buy, sell or non recommendation from the fed input matching to the ones on the defined portfolio list in the environment variable.
 - roles
@@ -263,7 +263,7 @@ def generate_stock_recommendation(stock_live_details):
 
 - test event:
      * {"PRVU": 295}
-[Back to Top](#top)
+- [Back to Top](#top)
 ### buy_stock:
     * This is the service responsible for processing buy of the ones recommended by above recommendation service.
     * Copy the code from buy_stock.py and paste into the code console on the new lambda creation page on management console.

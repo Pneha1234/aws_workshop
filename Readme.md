@@ -17,14 +17,13 @@ This repository serves as a central hub for code samples and projects covered du
 ## Contents
 
 This repository is organized into different sections:
-
+<a name="top"></a>
 - [Getting Started]((#getting-started))
    - [Cloning the Repository](#cloning-the-repository)
    - [Prerequisites](#prerequisites)
    - [AWS Workshop Overview](#aws-workshop-overview)
    - [AWS Services Used](#aws-services-used)
    - [Workshop Setup](#workshop-setup)
-      - [Lambda Layer](#lambda-layer)
       - [SQS](#sqs)
       - [SES](#ses)
       - [Lambda](#lambda)
@@ -77,19 +76,6 @@ Throughout the workshop, we'll be leveraging the following AWS services:
 
 ## Workshop Setup
 To set up the workshop environment, we'll configure various AWS services as follows:
-
-## Lambda Layer: 
-This layer contains third-party dependencies required by the Lambdas.
-- Download layer_zip.zip from [here](https://github.com/Pneha1234/worshop_code/blob/master/layer_zip.zip)
-- To Create a custom Lambda layer using the layer_zip.zip file with Python 3.11 runtime, use the following steps, in the AWS Management Console:
-  
-        * Navigate to the Lambda service.
-        * Go to "Layers" in the left menu.
-        * Click "Create layer."
-        * Provide a name and description for the layer(for this workshop we have named it as layer_zip).
-        * Upload the my_layer.zip file.
-        * Choose a compatible runtime (Python 3.11 in your case).
-        * Click "Create."
 
 ## SQS: 
 -stock_queue
@@ -168,6 +154,7 @@ def lambda_handler(event, context):
             'body': 'Error processing event: ' + str(e)
         }
 ```
+[Back to Top](#top)
 ### stock_info_consumer:
     * This is the service responsible for triggering the step function for individual stock info from sqs(also triggered by sqs).
     * Copy the code from stock_info_consumer.py and paste into the code console on the new lambda creation page on management   console.
@@ -224,6 +211,7 @@ def lambda_handler(event, context):
 ```
 - for env varible:
      * [ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC]
+[Back to Top](#top)
 ### generate_stock_recommendation:
     * This is the service responsible for generating buy, sell or non recommendation from the fed input matching to the ones on the defined portfolio list in the environment variable.
 - roles
@@ -275,6 +263,7 @@ def generate_stock_recommendation(stock_live_details):
 
 - test event:
      * {"PRVU": 295}
+[Back to Top](#top)
 ### buy_stock:
     * This is the service responsible for processing buy of the ones recommended by above recommendation service.
     * Copy the code from buy_stock.py and paste into the code console on the new lambda creation page on management console.
@@ -318,6 +307,7 @@ def lambda_handler(event, context):
             'body': 'Error processing buy: ' + str(e)
         }
 ```
+[Back to Top](#top)
 ### buy_and_sell_report:
     * This is the service responsible for reporting the user by email for either of buy or sell report.
     * Copy the code from buy_and_sell_report.py and paste into the code console on the new lambda creation page on management console.
@@ -356,6 +346,7 @@ def lambda_handler(event, context):
         'body': "Email Sent Successfully. MessageId is: " + response['MessageId']
     }
 ```
+[Back to Top](#top)
 ### Step Function:
 - stock_state_machine:
     * First let's add all the states as in the figure: Add lambda invocation state, add choice state under this, add lambda invocation under rule1, add another lambda invocation under default, then add another lambda invocation under one of the lambda then a succeed section under that lambda.
@@ -375,12 +366,3 @@ If you'd like to contribute to this repository, follow these steps:
 - Make your changes and commit them: git commit -m 'Description of changes'.
 -  to the branch: git push origin feature-name.
 - Open a pull request.
-
-## License
-This project is licensed under the MIT License.
-
-## Contact
-If you have any questions or feedback, don't hesitate to reach out:
-
-- Email: your@email.com
-- GitHub: YourUsername

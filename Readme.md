@@ -282,7 +282,7 @@ def lambda_handler(event, context):
         stock_name = event['stock_name']
         rate = event['rate']
 
-        # buy and process the stock (simulating buying)
+        # sell and process the stock (simulating selling)
         return {
             'statusCode': 200,
             'body': f'{default_stock_quantity} stocks for {stock_name} sold at {rate} rate for total amount {rate * default_stock_quantity}.'

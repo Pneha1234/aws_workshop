@@ -31,7 +31,7 @@ def lambda_handler(event, context):
         },
         'Subject': {
             'Charset': 'UTF-8',
-            'Data': f'Stock {buy_sell_header} Info',
+            'Data': f"Stock {buy_sell_header} Info",
         },
     },
     Source=recipient_email_address

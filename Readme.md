@@ -104,7 +104,8 @@ Verify your email identity under SES for sending email reports.
  ### stock_info_provider:
     * This is the service responsible for generating live prices and feeding to sqs queue. 
     * Provide environment variables required i.e. SQS_QUEUE_URL in Environment variables section under Configuration.
-    * Goto the permission section and add sqs access and event bridge access to the role.i.e AmazonSQSFullAccess and AmazonEventBridgeFullAccess
+    * Goto the permission section and add sqs access and event bridge access to 
+    the role.i.e AmazonSQSFullAccess and AmazonEventBridgeFullAccess
    - Please copy the code from the following snippet
  ```python
 import json
@@ -154,7 +155,8 @@ def lambda_handler(event, context):
 ### stock_info_consumer:
     * This is the service responsible for triggering the step function for individual stock info from sqs(also triggered by sqs).
     * Copy the code from stock_info_consumer.py and paste into the code console on the new lambda creation page on management   console.
-    * Provide environment variables required i.e. STATE_MACHINE_ARN and STOCK_PORTFOLIO with comma separated values without bracket (ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC) in Environment variables section under Configuration.
+    * Provide environment variables required i.e. STATE_MACHINE_ARN and STOCK_PORTFOLIO with comma separated values 
+    without bracket (ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC) in Environment variables section under Configuration.
     * Goto the permission section and add sqs, stepfunction access to the role. i.e   AWSStepFunctionsFullAccess
     * Finally, add the trigger with batch size 1 and the name pointing to above created sqs queue.
    - Please copy the code from the following snippet
@@ -206,8 +208,10 @@ def lambda_handler(event, context):
 ```
 - [Back to Top](#top)
 ### generate_stock_recommendation:
-    * This is the service responsible for generating buy, sell or non recommendation from the fed input matching to the ones on the defined portfolio list in the environment variable.
-     * Goto the permission section and add aws lambda basic execution role access to the role. i.e   AWSLambdaBasicExecutionRole
+    * This is the service responsible for generating buy, sell or non recommendation from the fed input 
+    * matching to the ones on the defined portfolio list in the environment variable.
+     * Goto the permission section and add aws lambda basic execution role access
+     to the role. i.e   AWSLambdaBasicExecutionRole
    
 - Please copy the code from the below snippet
 ```python
@@ -296,7 +300,8 @@ def lambda_handler(event, context):
 [Back to Top](#top)
 ### buy_and_sell_report:
     * This is the service responsible for reporting the user by email for either of buy or sell report.
-    * Provide environment variables required i.e. RECIPIENT_EMAIL_ADDRESS with the verified email above under SES section in Environment variables section under Configuration.
+    * Provide environment variables required i.e. RECIPIENT_EMAIL_ADDRESS with the
+    verified email above under SES section in Environment variables section under Configuration.
     * Goto the permission section and add ses access to the role. i.e. AmazonSESFullAccess
 ```python
 import os

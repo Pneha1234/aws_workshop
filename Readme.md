@@ -101,7 +101,7 @@ Verify your email identity under SES for sending email reports.
       * Verification is complete!
   
 ## Lambda:
- ### stock_info_provider:
+### stock_info_provider:
     * This is the service responsible for generating live prices and feeding to sqs queue. 
     * Provide environment variables required i.e. SQS_QUEUE_URL in Environment variables section under Configuration.
     * Goto the permission section and add sqs access policy to the role:
@@ -305,7 +305,8 @@ def lambda_handler(event, context):
     * This is the service responsible for reporting the user by email for either of buy or sell report.
     * Provide environment variables required i.e. RECIPIENT_EMAIL_ADDRESS with the
     verified email above under SES section in Environment variables section under Configuration.
-    * Goto the permission section and add ses access to the role. i.e. AmazonSESFullAccess
+    * Goto the permission section and add ses access to the role. 
+    { "Effect": "Allow", "Action": [ "ses:SendEmail" ], "Resource": "<VERIFIED_EMAIL_ARN>" }
 ```python
 import os
 import boto3
@@ -354,11 +355,15 @@ def lambda_handler(event, context):
 [Back to Top](#top)
 ### Step Function:
 - stock_state_machine:
-     * First let's add all the states as in the figure: Add lambda invocation state, add choice state under this, add lambda invocation under rule1, add another lambda invocation under default, then add another lambda invocation under one of the lambda then a succeed section under that lambda.
+    * Goto the stock_info_consumer lambda and goto permission section to add state machine execution permission to the role:
+    { "Effect": "Allow", "Action": [ "states:StartExecution" ], "Resource": "<STATE_MACHINE_ARN>" }
+    * Goto the SES console and under verified identities add your email to the verified identity list where a link is sent to you and should click to verify the email.
+    * First let's add all the states as in the figure: Add lambda invocation state, add choice state under this, add lambda invocation under rule1, add another lambda invocation under default, then add another lambda invocation under one of the lambda then a succeed section under that lambda.
     * This is the step function that is responsible for the orchestration of lambdas created above into a functioning workflow.
     * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name, select enter function name and select the generate_stock_recommendation lambda as the lambda, under Payload select use state input as payload, then go to the output tab by scrolling above, then select Filter output with OutputPath and add $.Payload.body in the text box.
     * Now Under Flow tab in the upper left side navigation section add a choice state under the generate stock recommendation state, now on the configuration section add.
     * Under start in workflow studio add lambda invocation state and on the right side under State name add: Generate stock recommendation, Leave integration type as it is, under function name select enter function name and select the generate_stock_recommendation lambda as the lambda.
+
 - [Back to Top](#top)
 
 ### Additional Resources

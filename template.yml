@@ -67,8 +67,6 @@ Resources:
       FunctionName: stock_info_provider
       Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers:
-        - Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:generic_layer:1
       Environment:
         Variables:
           SQS_QUEUE_URL: !Ref IntakeStreamQueue
@@ -123,8 +121,6 @@ Resources:
       FunctionName: stock_info_consumer
       Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers:
-       - Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:generic_layer:1
       Environment:
         Variables:
           STATE_MACHINE_ARN: 
@@ -277,8 +273,6 @@ Resources:
       FunctionName: buy_and_sell_report
       Handler: index.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Layers:
-       - Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:generic_layer:1
       Environment:
         Variables:
           RECIPIENT_EMAIL_ADDRESS: "workshop@yopmail.com"

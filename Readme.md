@@ -104,8 +104,10 @@ Verify your email identity under SES for sending email reports.
  ### stock_info_provider:
     * This is the service responsible for generating live prices and feeding to sqs queue. 
     * Provide environment variables required i.e. SQS_QUEUE_URL in Environment variables section under Configuration.
-    * Goto the permission section and add sqs access and event bridge access to 
-    the role.i.e AmazonSQSFullAccess and AmazonEventBridgeFullAccess
+    * Goto the permission section and add sqs access policy to the role:
+    {"Effect": "Allow","Action": ["sqs:SendMessage"],"Resource": "<SQS_ARN>"}
+    * Note that we are trying to follow The principle of least privilege (PoLP) as best practice.
+     
    - Please copy the code from the following snippet
  ```python
 import json
@@ -157,7 +159,8 @@ def lambda_handler(event, context):
     * Copy the code from stock_info_consumer.py and paste into the code console on the new lambda creation page on management   console.
     * Provide environment variables required i.e. STATE_MACHINE_ARN and STOCK_PORTFOLIO with comma separated values 
     without bracket (ADBL,EBL,GBIME,HBL,KBL,MBL,NABIL,NBL,NCCB,PCBL,PRVU,SBI,SCB,SRBL,STC,API,UIC,LIC,NLIC) in Environment variables section under Configuration.
-    * Goto the permission section and add sqs, stepfunction access to the role. i.e   AWSStepFunctionsFullAccess
+    * Goto the permission section and add sqs, stepfunction access to the role:
+    { "Effect": "Allow", "Action": [ "sqs:ReceiveMessage","sqs:DeleteMessage","sqs:GetQueueAttributes" ], "Resource": "<SQS_ARN>" }
     * Finally, add the trigger with batch size 1 and the name pointing to above created sqs queue.
    - Please copy the code from the following snippet
 ```python
